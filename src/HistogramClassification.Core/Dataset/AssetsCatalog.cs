@@ -57,14 +57,14 @@ public sealed class AssetsCatalog(string root)
     /// </summary>
     public DatasetSplit BuildSplit(IReadOnlyList<string> groups, int perClassLimit, double testFraction, int seed)
     {
-        if (groups.Count == 0) throw new ArgumentException("Не вибрано жодної групи.", nameof(groups));
+        if (groups.Count == 0) throw new ArgumentException("Не вибрано жодної групи.");
         if (testFraction is < 0 or >= 1)
             throw new ArgumentOutOfRangeException(nameof(testFraction), "Частка тесту має бути в [0; 1).");
 
         var groupDirs = groups.Select(group =>
         {
             var dir = GroupDirectory(group);
-            return Directory.Exists(dir) ? dir : throw new ArgumentException($"Групу '{group}' не знайдено в {Root}.", nameof(groups));
+            return Directory.Exists(dir) ? dir : throw new ArgumentException($"Групу '{group}' не знайдено в {Root}.");
         }).ToList();
 
         var classes = groupDirs
@@ -75,7 +75,7 @@ public sealed class AssetsCatalog(string root)
             .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
         if (classes.Count < 2)
-            throw new ArgumentException("Потрібно щонайменше 2 класи із зображеннями у вибраних групах.", nameof(groups));
+            throw new ArgumentException("Потрібно щонайменше 2 класи із зображеннями у вибраних групах.");
 
         var random = new Random(seed);
         var train = new List<LabeledImage>();
