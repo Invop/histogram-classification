@@ -44,7 +44,7 @@ public static class TrainingEndpoints
         var logger = loggers.CreateLogger("HistogramClassification.Training");
         var started = jobs.TryStart(JobNames.Training, async (context, ct) =>
         {
-            logger.LogInformation("Параметри: епох {Epochs}, η = {LearningRate}, ліміт на клас {Limit}, тест {Test:P0}, seed {Seed}",
+            logger.LogInformation("Parameters: epochs {Epochs}, η = {LearningRate}, per-class limit {Limit}, test {Test:P0}, seed {Seed}",
                 request.Epochs, request.LearningRate, request.PerClassLimit, request.TestFraction, request.Seed);
             var outcome = await TrainingPipeline.RunAsync(split, request, new HubPipelineObserver(context, logger), ct);
             models.Set(outcome.Model);

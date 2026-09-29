@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using HistogramClassification.Core.Dataset;
 using HistogramClassification.Core.Features;
 using HistogramClassification.Core.Network;
@@ -30,16 +31,16 @@ public static class TrainingPipeline
     {
         var progress = new ActionProgress<ProgressInfo>(observer.OnProgress);
         var timings = new List<StageTiming>();
-        observer.OnInfo($"Вибірка: групи [{string.Join(", ", split.Groups)}], класи [{string.Join(", ", split.ClassNames)}], " +
+        observer.OnInfo($"Dataset: groups [{string.Join(", ", split.Groups)}], classes [{string.Join(", ", split.ClassNames)}], " +
                         $"train {split.Train.Count}, test {split.Test.Count}.");
 
         var stopwatch = Stopwatch.StartNew();
         var extraction = await FeatureExtractor.ExtractAsync([.. split.Train, .. split.Test], request.Parallel, progress, ct);
         timings.Add(new StageTiming("features", stopwatch.ElapsedMilliseconds));
-        var mode = request.Parallel ? $"паралельно, {Environment.ProcessorCount} потоків" : "послідовно";
-        observer.OnInfo($"Ознаки: {extraction.Samples.Count} зображень за {stopwatch.ElapsedMilliseconds} мс ({mode}).");
+        var mode = request.Parallel ? $"parallel, {Environment.ProcessorCount} threads" : "sequential";
+        observer.OnInfo($"Features: {extraction.Samples.Count} images in {stopwatch.ElapsedMilliseconds} ms ({mode}).");
         foreach (var file in extraction.SkippedFiles)
-            observer.OnWarning($"Пропущено пошкоджений файл: {file}");
+            observer.OnWarning($"Skipped corrupted file: {file}");
 
         var testPaths = split.Test.Select(i => i.Path).ToHashSet(StringComparer.Ordinal);
         var train = extraction.Samples.Where(s => !testPaths.Contains(s.Path)).ToList();
@@ -53,11 +54,14 @@ public static class TrainingPipeline
         timings.Add(new StageTiming("training", stopwatch.ElapsedMilliseconds));
 
         var last = history[^1];
-        observer.OnInfo($"Навчання: {request.Epochs} епох за {stopwatch.ElapsedMilliseconds} мс, " +
-                        $"точність train {last.TrainAccuracy:P1}, test {(last.TestAccuracy is { } t ? t.ToString("P1") : "—")}.");
+        observer.OnInfo(string.Create(CultureInfo.InvariantCulture,
+            $"Training: {request.Epochs} epochs in {stopwatch.ElapsedMilliseconds} ms, " +
+            $"train accuracy {last.TrainAccuracy:P1}, test {(last.TestAccuracy is { } t ? t.ToString("P1", CultureInfo.InvariantCulture) : "—")}."));
 
         var metadata = new ModelMetadata(split.Groups, train.Count, test.Count, request.Epochs, request.LearningRate,
             request.Seed, last.TrainAccuracy, last.TestAccuracy, DateTimeOffset.UtcNow);
-        return new TrainingOutcome(new TrainedModel(split.ClassNames, network, metadata), history, extraction.SkippedFiles, timings);
+        return new TrainingOutcome(new TrainedModel(split.ClassNames, network, metadata), history,
+            extraction.SkippedFiles, timings);
     }
+
 }

@@ -13,7 +13,7 @@ public sealed class HubPipelineObserver(JobContext context, ILogger logger) : IP
         context.Epochs.Report(m);
         var step = Math.Max(1, m.TotalEpochs / 20);
         if (m.Epoch == 1 || m.Epoch == m.TotalEpochs || m.Epoch % step == 0)
-            logger.LogInformation("Епоха {Epoch}/{Total}: похибка {Loss:F4}, точність train {Train:P1}, test {Test:l}",
+            logger.LogInformation("Epoch {Epoch}/{Total}: loss {Loss:F4}, train accuracy {Train:P1}, test {Test:l}",
                 m.Epoch, m.TotalEpochs, m.Loss, m.TrainAccuracy, m.TestAccuracy?.ToString("P1") ?? "—");
     }
 

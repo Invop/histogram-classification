@@ -62,20 +62,20 @@ public sealed class JobRunner(IHubContext<ProgressHub> hub, ILogger<JobRunner> l
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            logger.LogInformation("Операція {Job:l} розпочата", name);
+            logger.LogInformation("Job '{Job:l}' started", JobNames.Display(name));
             await hub.Clients.All.SendAsync(HubEvents.Started, new JobStarted(id, name));
             var result = await work(new JobContext(hub, ProgressInterval), cts.Token);
-            logger.LogInformation("Операція {Job:l} завершена за {Elapsed} мс", name, stopwatch.ElapsedMilliseconds);
+            logger.LogInformation("Job '{Job:l}' completed in {Elapsed} ms", JobNames.Display(name), stopwatch.ElapsedMilliseconds);
             await hub.Clients.All.SendAsync(HubEvents.Completed, new JobCompleted(id, name, stopwatch.ElapsedMilliseconds, result));
         }
         catch (OperationCanceledException)
         {
-            logger.LogWarning("Операцію {Job:l} скасовано через {Elapsed} мс", name, stopwatch.ElapsedMilliseconds);
+            logger.LogWarning("Job '{Job:l}' cancelled after {Elapsed} ms", JobNames.Display(name), stopwatch.ElapsedMilliseconds);
             await hub.Clients.All.SendAsync(HubEvents.Failed, new JobFailed(id, name, stopwatch.ElapsedMilliseconds, "Скасовано"));
         }
         catch (Exception e)
         {
-            logger.LogError(e, "Операція {Job:l} завершилась помилкою", name);
+            logger.LogError(e, "Job '{Job:l}' failed", JobNames.Display(name));
             await hub.Clients.All.SendAsync(HubEvents.Failed, new JobFailed(id, name, stopwatch.ElapsedMilliseconds, e.Message));
         }
         finally

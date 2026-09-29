@@ -19,6 +19,14 @@ public static class JobNames
 {
     public const string Training = "training";
     public const string Generate = "generate";
+
+    /// <summary>Назва операції для логу.</summary>
+    public static string Display(string name) => name switch
+    {
+        Training => "training",
+        Generate => "image generation",
+        _ => name,
+    };
 }
 
 public sealed record JobStarted(Guid JobId, string Name);

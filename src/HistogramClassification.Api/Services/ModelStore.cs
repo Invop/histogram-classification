@@ -14,7 +14,7 @@ public sealed class ModelStore(string path, ILogger<ModelStore> logger)
         _current = model;
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, ModelSerializer.Serialize(model));
-        logger.LogInformation("Модель збережено: {Path:l}", path);
+        logger.LogInformation("Model saved: {Path:l}", path);
     }
 
     public void TryLoad()
@@ -24,11 +24,11 @@ public sealed class ModelStore(string path, ILogger<ModelStore> logger)
         {
             var model = ModelSerializer.Deserialize(File.ReadAllText(path));
             _current = model;
-            logger.LogInformation("Завантажено модель {Path:l} (класи: {Classes:l})", path, string.Join(", ", model.ClassNames));
+            logger.LogInformation("Loaded model {Path:l} (classes: {Classes:l})", path, string.Join(", ", model.ClassNames));
         }
         catch (Exception e) when (e is InvalidDataException or IOException)
         {
-            logger.LogWarning(e, "Не вдалося завантажити модель з {Path:l}", path);
+            logger.LogWarning(e, "Failed to load model from {Path:l}", path);
         }
     }
 }

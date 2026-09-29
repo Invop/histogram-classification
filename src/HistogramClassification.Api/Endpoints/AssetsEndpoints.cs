@@ -40,7 +40,7 @@ public static class AssetsEndpoints
             saved++;
         }
 
-        logger.LogInformation("Завантажено {Saved} файлів у {Group:l}/{Class:l}, відхилено {Rejected}", saved, group, className, rejected.Count);
+        logger.LogInformation("Uploaded {Saved} files to {Group:l}/{Class:l}, rejected {Rejected}", saved, group, className, rejected.Count);
         return Results.Ok(new { saved, rejected });
     }
 
@@ -55,11 +55,11 @@ public static class AssetsEndpoints
 
         var started = jobs.TryStart(JobNames.Generate, async (context, ct) =>
         {
-            logger.LogInformation("Генерація {Source:l} → {Target:l} ({Size}×{Size}, {Mode:l})",
-                body.Source, body.Target, body.Size, body.Size, body.Parallel ? "паралельно" : "послідовно");
+            logger.LogInformation("Generating {Source:l} → {Target:l} ({Size}×{Size}, {Mode:l})",
+                body.Source, body.Target, body.Size, body.Size, body.Parallel ? "parallel" : "sequential");
             var result = await IconGenerator.GenerateAsync(catalog, body.Source, body.Target, body.Size, body.Parallel, context.Progress, ct);
             foreach (var file in result.SkippedFiles)
-                logger.LogWarning("Пропущено пошкоджений файл: {File:l}", file);
+                logger.LogWarning("Skipped corrupted file: {File:l}", file);
             return result;
         }, out var jobId);
         return started ? ApiResults.Accepted(jobId) : ApiResults.Busy();

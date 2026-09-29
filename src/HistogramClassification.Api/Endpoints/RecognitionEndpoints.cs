@@ -23,7 +23,7 @@ public static class RecognitionEndpoints
         {
             await using var stream = file.OpenReadStream();
             var result = Recognizer.Recognize(model, stream);
-            logger.LogInformation("Розпізнано {File:l}: {Class:l} за {Elapsed} мс", file.FileName, result.Predicted, stopwatch.ElapsedMilliseconds);
+            logger.LogInformation("Recognized {File:l}: {Class:l} in {Elapsed} ms", file.FileName, result.Predicted, stopwatch.ElapsedMilliseconds);
             return Results.Ok(new
             {
                 result.Predicted,
