@@ -1,2 +1,9 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HistogramClassification.Api/HistogramClassification.Api.csproj" />
+    <Project Path="src/HistogramClassification.Core/HistogramClassification.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HistogramClassification.Core.Tests/HistogramClassification.Core.Tests.csproj" />
+  </Folder>
 </Solution>
