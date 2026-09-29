@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Класифікація за гістограмою</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%233b5bdb' d='M1 15h2V9H1zm4 0h2V3H5zm4 0h2V6H9zm4 0h2v-9h-2z'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="app-header__inner">
+        <h1 class="app-title">Розпізнавання зображень за неповною гістограмою</h1>
+        <div class="app-status">
+          <span id="current-op" class="current-op" hidden></span>
+          <span id="conn-status" class="badge badge--muted" title="Стан підключення до сервера">Підключення…</span>
+        </div>
+      </div>
+      <nav class="tabs" role="tablist" aria-label="Розділи">
+        <button type="button" class="tab" role="tab" id="tabbtn-data" data-tab="data" aria-controls="tab-data" aria-selected="true">Дані</button>
+        <button type="button" class="tab" role="tab" id="tabbtn-training" data-tab="training" aria-controls="tab-training" aria-selected="false">Навчання</button>
+        <button type="button" class="tab" role="tab" id="tabbtn-recognition" data-tab="recognition" aria-controls="tab-recognition" aria-selected="false">Розпізнавання</button>
+        <button type="button" class="tab" role="tab" id="tabbtn-log" data-tab="log" aria-controls="tab-log" aria-selected="false">Лог</button>
+      </nav>
+    </header>
+
+    <main class="page">
+      <!-- ============ Дані ============ -->
+      <section id="tab-data" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-data">
+        <div class="grid">
+          <article class="card">
+            <div class="card__head">
+              <h2>Каталог Assets</h2>
+              <button type="button" id="assets-refresh" class="btn btn--ghost">Оновити</button>
+            </div>
+            <p class="muted small">Корінь: <code id="assets-root">—</code></p>
+            <div id="assets-tree" class="tree"><p class="muted">Завантаження…</p></div>
+          </article>
+
+          <article class="card">
+            <h2>Завантаження</h2>
+            <div class="form-grid">
+              <label class="field">
+                <span>Група</span>
+                <input id="upload-group" type="text" list="upload-groups-list" value="hq-4k" autocomplete="off" />
+                <datalist id="upload-groups-list"></datalist>
+              </label>
+              <label class="field">
+                <span>Клас</span>
+                <input id="upload-class" type="text" list="upload-classes-list" autocomplete="off" placeholder="напр. ocean" />
+                <datalist id="upload-classes-list"></datalist>
+              </label>
+              <label class="field field--wide">
+                <span>Файли зображень</span>
+                <input id="upload-files" type="file" multiple accept="image/*" />
+              </label>
+            </div>
+            <div class="actions">
+              <button type="button" id="upload-start" class="btn btn--primary">Завантажити</button>
+            </div>
+            <progress id="upload-progress" max="1" value="0"></progress>
+            <p id="upload-status" class="status" aria-live="polite"></p>
+            <div id="upload-result"></div>
+          </article>
+
+          <article class="card">
+            <h2>Генерація групи</h2>
+            <p class="muted small">Зменшені копії всіх зображень вихідної групи (зі збереженням структури класів).</p>
+            <div class="form-grid">
+              <label class="field">
+                <span>Вихідна група</span>
+                <select id="gen-source"></select>
+              </label>
+              <label class="field">
+                <span>Цільова група</span>
+                <input id="gen-target" type="text" value="icons-32" autocomplete="off" />
+              </label>
+              <label class="field">
+                <span>Розмір, пікс.</span>
+                <input id="gen-size" type="number" min="1" max="4096" step="1" value="32" />
+              </label>
+              <label class="check">
+                <input id="gen-parallel" type="checkbox" checked />
+                <span>Паралельно</span>
+              </label>
+            </div>
+            <div class="actions">
+              <button type="button" id="gen-start" class="btn btn--primary">Згенерувати</button>
+              <button type="button" id="gen-cancel" class="btn" disabled>Скасувати</button>
+            </div>
+            <progress id="gen-progress" max="1" value="0"></progress>
+            <div class="status-row">
+              <p id="gen-status" class="status" aria-live="polite"></p>
+              <span id="gen-timer" class="timer"></span>
+            </div>
+            <div id="gen-result"></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ Навчання ============ -->
+      <section id="tab-training" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-training" hidden>
+        <div class="grid">
+          <article class="card">
+            <h2>Параметри навчання</h2>
+            <fieldset class="groups">
+              <legend>Групи зображень</legend>
+              <label class="check check--strong">
+                <input id="train-all" type="checkbox" />
+                <span>Уся папка Assets</span>
+              </label>
+              <div id="train-groups" class="groups__list"><p class="muted small">Завантаження…</p></div>
+            </fieldset>
+            <div class="form-grid">
+              <label class="field">
+                <span>Ліміт на клас (0 = всі)</span>
+                <input id="train-limit" type="number" min="0" step="1" value="0" />
+              </label>
+              <label class="field">
+                <span>Епохи</span>
+                <input id="train-epochs" type="number" min="1" step="1" value="200" />
+              </label>
+              <label class="field">
+                <span>Швидкість навчання η</span>
+                <input id="train-lr" type="number" min="0" step="0.01" value="0.1" />
+              </label>
+              <label class="field">
+                <span>Частка тесту</span>
+                <input id="train-test" type="number" min="0" max="0.9" step="0.05" value="0.2" />
+              </label>
+              <label class="field">
+                <span>Seed</span>
+                <input id="train-seed" type="number" step="1" value="42" />
+              </label>
+              <label class="check">
+                <input id="train-parallel" type="checkbox" checked />
+                <span>Паралельний витяг ознак</span>
+              </label>
+            </div>
+            <div class="actions">
+              <button type="button" id="train-start" class="btn btn--primary">Навчити</button>
+              <button type="button" id="train-cancel" class="btn" disabled>Скасувати</button>
+            </div>
+            <p id="train-error" class="status status--error" aria-live="polite"></p>
+          </article>
+
+          <article class="card">
+            <div class="card__head">
+              <h2>Прогрес</h2>
+              <span id="train-timer" class="timer"></span>
+            </div>
+            <div class="progress-block">
+              <label for="features-progress" id="features-text" class="progress-label">Ознаки: —</label>
+              <progress id="features-progress" max="1" value="0"></progress>
+            </div>
+            <div class="progress-block">
+              <label for="epochs-progress" id="epochs-text" class="progress-label">Навчання: —</label>
+              <progress id="epochs-progress" max="1" value="0"></progress>
+            </div>
+            <p id="epoch-metrics" class="metrics"></p>
+            <p id="train-timings" class="status"></p>
+          </article>
+
+          <article class="card card--wide">
+            <h2>MSE і точність по епохах</h2>
+            <div class="chart-box"><canvas id="metrics-chart" aria-label="Графік MSE і точності"></canvas></div>
+          </article>
+
+          <article class="card card--wide">
+            <h2>Теплова карта ваг</h2>
+            <p class="muted small">1024 ваги кожного нейрона як зображення 32×32: синій — додатні, червоний — від'ємні.</p>
+            <div id="weights-maps" class="heatmaps"><p class="muted">Модель ще не навчена.</p></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ Розпізнавання ============ -->
+      <section id="tab-recognition" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-recognition" hidden>
+        <div class="grid">
+          <article class="card">
+            <h2>Модель</h2>
+            <p id="model-info" class="model-info">Завантаження…</p>
+            <div class="actions">
+              <button type="button" id="model-export" class="btn">Експорт моделі</button>
+              <label class="btn file-btn" id="model-import-label">
+                Імпорт моделі
+                <input id="model-import" type="file" accept=".json,application/json" class="visually-hidden" />
+              </label>
+            </div>
+            <p id="model-status" class="status" aria-live="polite"></p>
+          </article>
+
+          <article class="card">
+            <h2>Зображення</h2>
+            <label class="field">
+              <span>Файл для розпізнавання</span>
+              <input id="recognize-file" type="file" accept="image/*" />
+            </label>
+            <div class="preview">
+              <img id="recognize-preview" alt="Попередній перегляд" hidden />
+            </div>
+            <p id="recognize-result" class="result" aria-live="polite"></p>
+          </article>
+
+          <article class="card">
+            <h2>Виходи нейронів</h2>
+            <div class="chart-box"><canvas id="outputs-chart" aria-label="Виходи нейронів"></canvas></div>
+          </article>
+
+          <article class="card">
+            <h2>Гістограма яскравості</h2>
+            <div class="chart-box"><canvas id="histogram-chart" aria-label="Гістограма яскравості"></canvas></div>
+          </article>
+
+          <article class="card">
+            <h2>Неповна гістограма (0..15)</h2>
+            <div class="chart-box"><canvas id="partial-chart" aria-label="Неповна гістограма"></canvas></div>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ Лог ============ -->
+      <section id="tab-log" class="tab-panel" role="tabpanel" aria-labelledby="tabbtn-log" hidden>
+        <article class="card">
+          <div class="card__head">
+            <h2>Журнал операцій</h2>
+            <span id="log-count" class="muted small"></span>
+          </div>
+          <p class="muted small">Також записується у <code>logs/app-YYYYMMDD.log</code></p>
+          <ol id="log-list" class="log"></ol>
+        </article>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

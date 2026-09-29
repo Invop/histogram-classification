@@ -10,6 +10,11 @@ using Serilog.Filters;
 
 const long maxUploadBytes = 2L * 1024 * 1024 * 1024;
 
+// Parallel.For у витягу ознак займає ProcessorCount потоків пулу; без запасу відповіді HTTP і SignalR
+// чекали б, поки пул повільно додасть потоки, і прогрес «застигав» на перші секунди.
+ThreadPool.GetMinThreads(out var minWorkers, out var minIo);
+ThreadPool.SetMinThreads(Math.Max(minWorkers, Environment.ProcessorCount * 2), minIo);
+
 var builder = WebApplication.CreateBuilder(args);
 var options = builder.Configuration.GetSection(AppOptions.Section).Get<AppOptions>() ?? new AppOptions();
 string Resolve(string path) => Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, path));
