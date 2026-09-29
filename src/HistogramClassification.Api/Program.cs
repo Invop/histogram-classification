@@ -43,7 +43,13 @@ var app = builder.Build();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    // Vite кладе в /assets файли з хешем у назві — їх можна кешувати назавжди. index.html (і решту)
+    // браузер має перевіряти щоразу, інакше після нової збірки UI він показує стару версію з кешу.
+    OnPrepareResponse = ctx => ctx.Context.Response.Headers.CacheControl =
+        ctx.Context.Request.Path.StartsWithSegments("/assets") ? "public, max-age=31536000, immutable" : "no-cache",
+});
 app.MapHub<ProgressHub>("/hubs/progress");
 app.MapAssetsEndpoints();
 app.MapTrainingEndpoints();
@@ -52,7 +58,7 @@ app.MapModelEndpoints();
 
 var catalog = app.Services.GetRequiredService<AssetsCatalog>();
 Directory.CreateDirectory(catalog.Root);
-app.Logger.LogInformation("Каталог зображень: {Root:l}", catalog.Root);
+app.Logger.LogInformation("Images folder: {Root:l}", catalog.Root);
 app.Services.GetRequiredService<ModelStore>().TryLoad();
 
 app.Run();

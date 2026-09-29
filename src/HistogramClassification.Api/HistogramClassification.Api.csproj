@@ -14,4 +14,75 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!--
+    UI (src/web) is built into wwwroot as part of this project's build: `npm install` when
+    package.json / package-lock.json change, `npm run build` when the UI sources change.
+    Skip with -p:SkipWebBuild=true (e.g. while `npm run dev` serves the UI).
+  -->
+  <PropertyGroup>
+    <WebRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '..', 'web'))</WebRoot>
+    <WebInstallStamp>$(WebRoot)node_modules\.install-stamp</WebInstallStamp>
+    <WwwRoot>$(MSBuildProjectDirectory)\wwwroot\</WwwRoot>
+    <WebOutput>$(WwwRoot)index.html</WebOutput>
+    <WebBuildStamp>$(MSBuildProjectDirectory)\obj\webdist\.build-stamp</WebBuildStamp>
+    <WebBuildEnabled Condition="'$(SkipWebBuild)' != 'true' And '$(DesignTimeBuild)' != 'true'">true</WebBuildEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <WebSource Include="$(WebRoot)src\**\*" />
+    <WebSource Include="$(WebRoot)index.html;$(WebRoot)package.json;$(WebRoot)package-lock.json;$(WebRoot)vite.config.ts;$(WebRoot)tsconfig.json" />
+    <!-- Visual Studio's fast up-to-date check skips MSBuild unless it knows the UI sources are inputs. -->
+    <UpToDateCheckInput Include="@(WebSource)" Set="Web" />
+    <UpToDateCheckOutput Include="$(WebOutput)" Set="Web" />
+  </ItemGroup>
+
+  <Target Name="WebCheckNode">
+    <Exec Command="node --version" StandardOutputImportance="low" IgnoreExitCode="true" ContinueOnError="true">
+      <Output TaskParameter="ExitCode" PropertyName="WebNodeExitCode" />
+    </Exec>
+    <Error Condition="'$(WebNodeExitCode)' != '0'"
+           Text="Для збірки UI потрібен Node.js 20+ (https://nodejs.org). Зібрати лише API: dotnet build -p:SkipWebBuild=true" />
+  </Target>
+
+  <Target Name="WebNpmInstall" Condition="'$(WebBuildEnabled)' == 'true'"
+          Inputs="$(WebRoot)package.json;$(WebRoot)package-lock.json" Outputs="$(WebInstallStamp)">
+    <CallTarget Targets="WebCheckNode" />
+    <Exec Command="npm install --no-audit --no-fund" WorkingDirectory="$(WebRoot)" />
+    <Touch Files="$(WebInstallStamp)" AlwaysCreate="true" />
+  </Target>
+
+  <!--
+    Vite empties its outDir first, so two builds running at once (e.g. Visual Studio starting a second build)
+    would delete each other's files and leave wwwroot with index.html only. Each build therefore writes to its
+    own folder under obj\webdist, and only the finished result is synced into wwwroot.
+    The stamp is written after a successful sync, so an interrupted build is redone next time.
+  -->
+  <Target Name="WebBuild" BeforeTargets="BeforeBuild" DependsOnTargets="WebNpmInstall" Condition="'$(WebBuildEnabled)' == 'true'"
+          Inputs="@(WebSource)" Outputs="$(WebBuildStamp);$(WebOutput)">
+    <CallTarget Targets="WebCheckNode" />
+    <PropertyGroup>
+      <_WebStage>$(MSBuildProjectDirectory)\obj\webdist\$([System.Guid]::NewGuid().ToString('N'))</_WebStage>
+    </PropertyGroup>
+    <Exec Command="npm run build -- --outDir &quot;$(_WebStage)&quot; --emptyOutDir" WorkingDirectory="$(WebRoot)" />
+    <ItemGroup>
+      <_WebBuilt Include="$(_WebStage)\**\*" />
+      <_WebOld Include="$(WwwRoot)**\*" />
+      <_WebNew Include="@(_WebBuilt->'$(WwwRoot)%(RecursiveDir)%(Filename)%(Extension)')" />
+      <_WebStale Include="@(_WebOld)" Exclude="@(_WebNew)" />
+    </ItemGroup>
+    <Error Condition="!Exists('$(_WebStage)\index.html')" Text="Збірка UI не створила index.html у $(_WebStage)." />
+    <Copy SourceFiles="@(_WebBuilt)" DestinationFiles="@(_WebNew)" SkipUnchangedFiles="true" Retries="5" RetryDelayMilliseconds="200" />
+    <Delete Files="@(_WebStale)" ContinueOnError="true" />
+    <RemoveDir Directories="$(_WebStage)" ContinueOnError="true" />
+    <Touch Files="$(WebBuildStamp)" AlwaysCreate="true" />
+  </Target>
+
+  <!-- wwwroot is globbed at evaluation, before the UI existed or changed: pick up the fresh files for publish. -->
+  <Target Name="WebIncludeOutput" AfterTargets="WebBuild" Condition="'$(WebBuildEnabled)' == 'true'">
+    <ItemGroup>
+      <Content Remove="wwwroot\**" />
+      <Content Include="wwwroot\**" ExcludeFromSingleFile="true" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
 </Project>
