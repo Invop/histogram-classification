@@ -1,55 +1,49 @@
 // Weight heatmaps: each class's 1024 weights drawn as a 32×32 image.
-import { el } from './util';
+export const HEATMAP_SIDE = 32;
 
-const SIDE = 32;
-const POSITIVE: readonly [number, number, number] = [20, 40, 140]; // dark blue
-const NEGATIVE: readonly [number, number, number] = [200, 30, 30]; // red
+export type Rgb = readonly [number, number, number];
 
-function mix(target: readonly [number, number, number], t: number): [number, number, number] {
-  // white → target, t in 0..1
+/** Diverging palette: `base` at w = 0, `positive` / `negative` at ±maxAbs. */
+export interface HeatmapPalette {
+  base: Rgb;
+  positive: Rgb;
+  negative: Rgb;
+}
+
+function mix(from: Rgb, to: Rgb, t: number): Rgb {
   return [
-    Math.round(255 + (target[0] - 255) * t),
-    Math.round(255 + (target[1] - 255) * t),
-    Math.round(255 + (target[2] - 255) * t),
+    Math.round(from[0] + (to[0] - from[0]) * t),
+    Math.round(from[1] + (to[1] - from[1]) * t),
+    Math.round(from[2] + (to[2] - from[2]) * t),
   ];
 }
 
-/** Render one canvas per class; intensity = |w| / max|w| over all classes. */
-export function renderWeights(container: HTMLElement, classes: readonly string[], weights: readonly number[][]): void {
-  container.replaceChildren();
-  if (classes.length === 0 || weights.length === 0) {
-    container.append(el('p', 'muted', 'Немає ваг для відображення.'));
-    return;
-  }
+/** Colour of weight `w` (already divided by maxAbs, so in -1..1). */
+export function weightColor(w: number, p: HeatmapPalette): Rgb {
+  return mix(p.base, w >= 0 ? p.positive : p.negative, Math.min(1, Math.abs(w)));
+}
 
+/** max |w| over all classes (1 when every weight is zero). */
+export function maxAbsWeight(weights: readonly number[][]): number {
   let maxAbs = 0;
   for (const row of weights) for (const w of row) maxAbs = Math.max(maxAbs, Math.abs(w));
-  if (maxAbs === 0) maxAbs = 1;
+  return maxAbs === 0 ? 1 : maxAbs;
+}
 
-  weights.forEach((row, k) => {
-    const canvas = el('canvas', 'heatmap-canvas');
-    canvas.width = SIDE;
-    canvas.height = SIDE;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      const img = ctx.createImageData(SIDE, SIDE);
-      const n = Math.min(row.length, SIDE * SIDE);
-      for (let i = 0; i < SIDE * SIDE; i++) {
-        const w = i < n ? row[i] : 0;
-        const [r, g, b] = mix(w >= 0 ? POSITIVE : NEGATIVE, Math.min(1, Math.abs(w) / maxAbs));
-        img.data[i * 4] = r;
-        img.data[i * 4 + 1] = g;
-        img.data[i * 4 + 2] = b;
-        img.data[i * 4 + 3] = 255;
-      }
-      ctx.putImageData(img, 0, 0);
-    }
-    const name = classes[k] ?? `#${k}`;
-    canvas.setAttribute('role', 'img');
-    canvas.setAttribute('aria-label', `Ваги класу ${name}`);
-
-    const figure = el('figure', 'heatmap');
-    figure.append(canvas, el('figcaption', undefined, name));
-    container.append(figure);
-  });
+/** Paint one class's weights; intensity = |w| / maxAbs. */
+export function drawWeights(canvas: HTMLCanvasElement, row: readonly number[], maxAbs: number, palette: HeatmapPalette): void {
+  canvas.width = HEATMAP_SIDE;
+  canvas.height = HEATMAP_SIDE;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const img = ctx.createImageData(HEATMAP_SIDE, HEATMAP_SIDE);
+  const n = Math.min(row.length, HEATMAP_SIDE * HEATMAP_SIDE);
+  for (let i = 0; i < HEATMAP_SIDE * HEATMAP_SIDE; i++) {
+    const [r, g, b] = weightColor(i < n ? row[i] / maxAbs : 0, palette);
+    img.data[i * 4] = r;
+    img.data[i * 4 + 1] = g;
+    img.data[i * 4 + 2] = b;
+    img.data[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
 }

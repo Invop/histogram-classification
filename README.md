@@ -8,18 +8,19 @@
 3. **неповна гістограма** — кожен бін нормується до 0..15 відносно максимуму (`round(15·h/max h)`), тобто 4 біти;
 4. 256 × 4 = **1024 бінарні входи** одношарової ШНМ (сигмоїда, дельта-правило), один вихідний нейрон на клас.
 
-Стек: ASP.NET Core 10 (Minimal API + SignalR + Serilog), бібліотека `Core` (ImageSharp, TensorPrimitives), UI на TypeScript (Vite, Chart.js).
+Стек: ASP.NET Core 10 (Minimal API + SignalR + Serilog), бібліотека `Core` (ImageSharp, TensorPrimitives), UI на React + TypeScript (Vite, Tailwind CSS, shadcn/ui, Chart.js).
 
 ## Запуск
 
 Потрібні .NET 10 SDK і Node.js 20+.
 
+Запуск сервера → http://localhost:5080 з кореня репозиторію:
+
 ```bash
-# збірка UI у src/HistogramClassification.Api/wwwroot
-cd src/web && npm install && npm run build && cd ../..
-# запуск сервера → http://localhost:5080
 dotnet run --project src/HistogramClassification.Api --launch-profile http
 ```
+
+Збірка проєкту `Api` сама збирає UI у `src/HistogramClassification.Api/wwwroot`: `npm install` — коли змінюються `package.json` / `package-lock.json`, `npm run build` — коли змінюються вихідні файли `src/web`. Зібрати лише API без UI: `dotnet build -p:SkipWebBuild=true`.
 
 Режим розробки UI з гарячим перезавантаженням: запустіть сервер як вище, а в іншому терміналі `cd src/web && npm run dev` → http://localhost:5173 (запити `/api` і `/hubs` проксіюються на 5080).
 

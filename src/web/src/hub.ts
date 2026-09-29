@@ -107,8 +107,26 @@ function dispatch<K extends EventName>(name: K, payload: Parameters<HubHandlers[
 
 let connection: HubConnection | null = null;
 
+let status: HubStatus = 'connecting';
+const statusListeners = new Set<(s: HubStatus) => void>();
+
+function setStatus(s: HubStatus): void {
+  status = s;
+  statusListeners.forEach((l) => l(s));
+}
+
+export function getHubStatus(): HubStatus {
+  return status;
+}
+
+/** Subscribe to connection status changes. Returns an unsubscribe function. */
+export function onHubStatus(listener: (s: HubStatus) => void): () => void {
+  statusListeners.add(listener);
+  return () => statusListeners.delete(listener);
+}
+
 /** Build and start the hub connection; keeps retrying after the automatic reconnect gives up. */
-export function connectHub(onStatus: (s: HubStatus) => void): HubConnection {
+export function connectHub(): HubConnection {
   if (connection) return connection;
 
   const conn = new HubConnectionBuilder()
@@ -122,10 +140,10 @@ export function connectHub(onStatus: (s: HubStatus) => void): HubConnection {
     conn.on(name, (payload: never) => dispatch(name, payload));
   }
 
-  conn.onreconnecting(() => onStatus('reconnecting'));
-  conn.onreconnected(() => onStatus('connected'));
+  conn.onreconnecting(() => setStatus('reconnecting'));
+  conn.onreconnected(() => setStatus('connected'));
   conn.onclose(() => {
-    onStatus('disconnected');
+    setStatus('disconnected');
     scheduleStart();
   });
 
@@ -136,12 +154,12 @@ export function connectHub(onStatus: (s: HubStatus) => void): HubConnection {
   };
 
   async function start(): Promise<void> {
-    onStatus('connecting');
+    setStatus('connecting');
     try {
       await conn.start();
-      onStatus('connected');
+      setStatus('connected');
     } catch {
-      onStatus('disconnected');
+      setStatus('disconnected');
       scheduleStart();
     }
   }

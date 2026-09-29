@@ -1,10 +1,3 @@
-/** Typed getElementById that throws when the element is missing. */
-export function $<T extends HTMLElement = HTMLElement>(id: string): T {
-  const el = document.getElementById(id);
-  if (!el) throw new Error(`Element #${id} not found`);
-  return el as T;
-}
-
 /** ms < 1000 → "N мс", otherwise "N.NN с". */
 export function formatMs(ms: number): string {
   if (!Number.isFinite(ms)) return '—';
@@ -36,44 +29,7 @@ export function formatTime(timestamp: string): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-/** Create an element with optional class and text. */
-export function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  className?: string,
-  text?: string,
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
-
-/** Read a CSS custom property from :root. */
-export function cssVar(name: string, fallback = ''): string {
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return v || fallback;
-}
-
-/** Replace the options of a <datalist>. */
-export function fillDatalist(list: HTMLDataListElement, values: readonly string[]): void {
-  list.replaceChildren(
-    ...values.map((v) => {
-      const o = document.createElement('option');
-      o.value = v;
-      return o;
-    }),
-  );
-}
-
-/** Collapsible list of file names (e.g. skipped or rejected files). Empty list → empty fragment. */
-export function fileList(summary: string, files: readonly string[]): HTMLElement | DocumentFragment {
-  if (files.length === 0) return document.createDocumentFragment();
-  const details = el('details', 'file-list');
-  details.append(el('summary', undefined, `${summary}: ${files.length}`));
-  const ul = el('ul');
-  const shown = files.slice(0, 500);
-  for (const f of shown) ul.append(el('li', undefined, f));
-  if (files.length > shown.length) ul.append(el('li', 'muted', `… і ще ${files.length - shown.length}`));
-  details.append(ul);
-  return details;
+/** done/total → 0..100 for <Progress>. */
+export function progressValue(done: number, total: number): number {
+  return total > 0 ? Math.min(100, (done / total) * 100) : 0;
 }

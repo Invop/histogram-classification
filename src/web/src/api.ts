@@ -73,6 +73,7 @@ export interface ModelInfo {
 
 export interface ModelWeights {
   classes: string[];
+  /** Per class: 1024 inputs (32×32). */
   weights: number[][];
 }
 
